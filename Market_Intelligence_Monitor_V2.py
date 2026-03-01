@@ -1,15 +1,7 @@
-########################################################################
+
 # MARKET INTELLIGENCE MONITOR — V2
 # Instalación requerida:
-#   pip install reportlab yfinance pandas pandas_datareader seaborn matplotlib numpy
-#
-# NUEVAS SECCIONES vs V1:
-#   0. Risk Scorecard (semáforos por dimensión analítica)
-#   6. Global Macro & Credit Spreads  (EEM, EWG, EWJ, FXI, HYG, EMB)
-#   7. Advanced Curve Analysis        (2Y FRED, Term Premium, Real Rates)
-#   8. Market Liquidity               (Amihud Ratio, Volume Breadth)
-#   9. Scenario Analysis              (Bull / Base / Bear con probabilidades)
-########################################################################
+#   pip install reportlab yfinance pandas pandas_datareader seaborn matplotlib 
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -33,64 +25,60 @@ from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT, TA_RIGHT
 
-# ══════════════════════════════════════════════════════════════════════
 # 1. INPUTS ESTRATÉGICOS
-#    → Modifica ANALYSIS, UPCOMING_EVENTS, PORTFOLIO y SCENARIOS_DATA
-# ══════════════════════════════════════════════════════════════════════
 
 ANALYSIS = {
     # ── Sección 1: Macro Overview ─────────────────────────────────────
-    "MACRO_HEADER": """<b>SNAPSHOT DIARIO:</b> Los mercados de renta variable continúan su expansión de múltiplos. Sin embargo, la fortaleza del Dólar (DXY) y el repunte en las tasas reales sugieren condiciones financieras restrictivas.""",
-    "MACRO_BODY": """El entorno actual se define como expansión de múltiplos, donde el crecimiento del S&P500 parece estar respaldado por la resiliencia del sentimiento del mercado a pesar del endurecimiento financiero. El S&P500 mantiene una tendencia alcista estructural mientras la volatilidad (VIX) se mantiene en niveles históricamente bajos — señal de complacencia donde el mercado ignora el riesgo de cola.""",
+    "MACRO_HEADER": """<b>SNAPSHOT DIARIO:</b> El S&P 500 muestra una leve consolidación a corto plazo (-1.36% en 1M), aunque mantiene un sólido rendimiento anual (+18.63%). La debilidad secular del Dólar (DXY cayendo -8.95% a 1 año) está marcando el ritmo de los flujos globales.""",
+    "MACRO_BODY": """El entorno actual ha dejado atrás la complacencia extrema. El VIX spot se ubica en 19.86, entrando en zona de cautela (amarillo) y reflejando una incipiente prima de riesgo. La caída prolongada del DXY sugiere condiciones financieras globales que intentan relajarse, aunque el mercado de renta variable estadounidense (SPY) empieza a mostrar agotamiento tras la gran expansión previa.""",
 
     # ── Sección 2: Tactical Alpha ─────────────────────────────────────
-    "ALPHA_BODY": """<b>Forecast (for 1 month):</b> El Implied Cone proyecta un rango de movimiento de 2.5% para el próximo mes. Esto indica que el activo está operando en el límite superior de lo que la volatilidad implícita considera normal. Con un RSI en 68, el mercado está en la frontera técnica de la sobrecompra por lo cual se sugiere cautela: la relación riesgo-recompensa para nuevas posiciones largas es desfavorable.""",
+    "ALPHA_BODY": """<b>Forecast & Momentum:</b> Contrario a ciclos de sobrecompra recientes, el RSI a 14 días del S&P 500 ha retrocedido a 45.61 (zona neutral). Esto indica un enfriamiento técnico importante. Sin embargo, con la volatilidad implícita al alza, el rango de movimiento proyectado (Implied Cone) sugiere que podríamos ver oscilaciones más bruscas en las próximas semanas. La relación riesgo-recompensa es incierta.""",
 
     # ── Sección 3: Rates Structure ────────────────────────────────────
-    "RATES_BODY": """La inversión de la curva (Spread 10Y-3M) persiste. Sin embargo, la atención se centra en los 'Breakevens' de inflación (<b>ver Fig 3.2</b>). El mercado ha descontado una normalización, pero el repunte reciente en el tramo largo sugiere inflación creciente. El ratio TIP/IEF muestra tendencia al alza, sugiriendo que el mercado espera que la inflación real supere a la nominal en el mediano plazo.""",
+    "RATES_BODY": """<b>ALERTA MACRO:</b> La curva de rendimientos (Spread 10Y-3M) se ha 'desinvertido' y vuelve a terreno positivo (0.38). Históricamente, el 'bull steepener' o la desinversión de la curva tras un largo periodo negativo es el detonante clásico que precede inmediatamente a una recesión. Adicionalmente, el ratio TIP/IEF (1.14) advierte que las expectativas de inflación real subyacente no están controladas del todo.""",
 
     # ── Sección 4: Risk & Correlation ────────────────────────────────
-    "RISK_BODY": """El efecto de la diversificación se ha deteriorado. La correlación SPY/TLT ha roto al alza (+0.45), eliminando el beneficio de la diversificación y aumentando el riesgo sistémico de la cartera. La correlación de 0.91 entre TLT (Bonos largos) e IEF (Bonos medios) es esperada, pero la correlación negativa entre SPY y VIX confirma su cobertura limpia contra una caída de renta variable.""",
+    "RISK_BODY": """La matriz cross-asset revela que los bonos del tesoro (TLT) ofrecen una diversificación limitada frente a las acciones, con una correlación SPY/TLT ligeramente positiva de 0.09. Ante esta pérdida de eficacia del típico portafolio 60/40, la cobertura más limpia y directa contra una corrección del S&P 500 sigue siendo la volatilidad pura, evidenciada por la fuerte correlación inversa SPY/VIX de -0.88.""",
 
     # ── Sección 5: Portfolio Fragility ───────────────────────────────
-    "PORTFOLIO_BODY": """Los bonos han sufrido una caída desde máximos más profunda y prolongada que las acciones. El S&P500 ha mostrado recuperación más rápida; los Bonos mantienen drawdowns prolongados impactando en la liquidez institucional. Esto evidencia que la renta fija ha dejado de ser el activo refugio tradicional en este ciclo de tasas.""",
+    "PORTFOLIO_BODY": """El estrés en renta fija es evidente: los bonos del tesoro (TLT) mantienen drawdowns profundos y prolongados que superan al equity. El test de estrés indica que el portafolio es sumamente vulnerable a un choque inflacionario (-$700,000 de impacto estimado) o a desplazamientos paralelos al alza en las tasas (+50bps = -$660,500). Los bonos largos no actúan como refugio garantizado bajo este régimen.""",
 
     # ── Sección 6: Global Macro & Credit ─────────────────────────────
-    "GLOBAL_BODY": """La divergencia entre mercados desarrollados y emergentes se amplía. EEM (Emergentes) y FXI (China) muestran underperformance estructural frente al S&P500, mientras que EWG (Alemania) se beneficia de la debilidad relativa del Euro. El spread de High Yield (HYG) como proxy de crédito muestra señales mixtas: compresión de spreads en ciclos de riesgo, pero con reversión reciente que anticipa cautela. EMB (Deuda EM) cotiza bajo presión ante el fortalecimiento del USD.""",
+    "GLOBAL_BODY": """<b>Rotación Global Agresiva:</b> Los Mercados Emergentes (EEM) están exhibiendo un fuerte 'outperformance' relativo, alcanzando un nivel de 148.32 (base 100) y destrozando al S&P 500. La fuerte caída del dólar (-8.95% a 1Y) está catalizando flujos masivos hacia activos ex-US. Por otro lado, el proxy de crédito (HYG/IEF en 0.82) se mantiene estable, pero es el eslabón débil a vigilar si la desinversión de la curva impacta el apalancamiento corporativo.""",
 
     # ── Sección 7: Advanced Curve ─────────────────────────────────────
-    "ADVANCED_CURVE_BODY": """El análisis avanzado de la curva incorpora el spread 2Y-10Y (el más utilizado por la Fed para señales de recesión) junto al rendimiento real ex-ante derivado del diferencial TIP/IEF. El término premium — diferencia entre el yield nominal y la expectativa de tasas cortas — muestra compresión, lo que sugiere que el mercado no está exigiendo compensación adicional por riesgo de duración. Este fenómeno es históricamente precedido por episodios de re-pricing abrupto.""",
+    "ADVANCED_CURVE_BODY": """La normalización de la curva (tanto 10Y-3M como 2Y-10Y retornando a pendiente positiva) suele coincidir con intervenciones inminentes de la Fed (recortes por estrés) o 'repricing' masivos de riesgo. Las tasas reales se mantienen en terreno positivo/restrictivo, ejerciendo presión estructural sobre las valoraciones de activos de muy larga duración (growth stocks).""",
 
     # ── Sección 8: Market Liquidity ───────────────────────────────────
-    "LIQUIDITY_BODY": """El ratio de iliquidez de Amihud mide el impacto de precio por unidad de volumen negociado — valores altos señalan deterioro de liquidez de mercado. El análisis del volumen relativo (vs. media 20D) muestra si los movimientos de precio están respaldados por participación real o son movimientos de baja convicción. Un VIX elevado combinado con volumen bajo es la antesala de movimientos violentos de reversión.""",
+    "LIQUIDITY_BODY": """El ratio de Amihud muestra que, a pesar de los retrocesos puntuales en el SPY, la liquidez subyacente del mercado se mantiene relativamente frágil en ventanas intra-mes. Si observamos un VIX coqueteando con el nivel de 20 emparejado con picos en el illiquidity ratio, las caídas podrían exacerbarse por falta de profundidad en el libro de órdenes (market breadth).""",
 
     # ── Sección 9: Scenario Analysis ─────────────────────────────────
-    "SCENARIO_BODY": """El framework de tres escenarios cuantifica las probabilidades y catalizadores del entorno actual. El escenario Base asigna un 50% de probabilidad a una consolidación en el rango actual con inflación moderada. El escenario Bull (25%) requiere un pivote de la Fed con datos de empleo sólidos. El escenario Bear (25%) contempla un resurgimiento de inflación o un accidente de crédito que fuerce re-pricing masivo de activos de riesgo. Los niveles de invalidación técnica funcionan como triggers de re-evaluación del escenario activo.""",
+    "SCENARIO_BODY": """El framework de probabilidades dicta precaución. Escenario Base (50%): Aterrizaje suave o consolidación (S&P en rango 6,200 - 6,800). Sin embargo, el 'steepening' de la curva eleva los riesgos del Escenario Bear (25%), donde un evento crediticio o un resurgimiento inflacionario rompa los 5,800 puntos. El Escenario Bull (25% > 7,200) requeriría caídas del DXY por debajo de 95 y recortes de tasas agresivos sin destrucción de empleo.""",
 
-    # ── Pies de Figura ────────────────────────────────────────────────
-    "CAPTION_MACRO":     """<b>Fig 1.1:</b> La divergencia entre el S&P500 (Azul) subiendo y el VIX (Gris) en mínimos indica un entorno de 'Risk-On' frágil.""",
-    "CAPTION_VIX":       """<b>Fig 1.2:</b> Mide la volatilidad relativa. Valores &lt; -1.5 (Verde) indican opciones baratas; &gt; +2.0 (Rojo) indican pánico excesivo.""",
-    "CAPTION_CONE":      """<b>Fig 2.1:</b> Proyección a 1 mes basada en volatilidad implícita. El 68% del tiempo el precio se mantendrá en la zona azul clara.""",
-    "CAPTION_CURVE":     """<b>Fig 3.1:</b> Comparativa de la estructura de tasas hoy vs el pasado. Una curva invertida (cortas &gt; largas) alerta recesión.""",
-    "CAPTION_RECESSION": """<b>Fig 3.2:</b> Spread 10Y-3M negativo (Rojo) predice recesión. Ratio TIP/IEF (Rojo) mide expectativas de inflación.""",
-    "CAPTION_CORR":      """<b>Fig 4.1:</b> Correlación móvil SPY/TLT. Zonas Verdes = Cobertura efectiva. Zonas Rojas = Fallo de diversificación.""",
-    "CAPTION_HEATMAP":   """<b>Fig 4.2:</b> Mapa de calor de 90 días. Colores cálidos indican activos moviéndose al unísono (riesgo sistémico).""",
-    "CAPTION_DD":        """<b>Fig 5.1:</b> Muestra la profundidad de caída desde máximos. Note cómo los bonos (Rojo) siguen en drawdown profundo.""",
-    "CAPTION_STRESS":    """<b>Fig 5.2:</b> Impacto estimado en P&amp;L ($) bajo escenarios de choque. El 'Bear Flattener' es el riesgo central actual.""",
-    "CAPTION_GLOBAL":    """<b>Fig 6.1:</b> Performance relativa normalizada (base 100). Divergencia entre mercados desarrollados y emergentes.""",
-    "CAPTION_CREDIT":    """<b>Fig 6.2:</b> Ratio HYG/IEF como proxy de spread crediticio. Caídas indican ampliación de spreads y aversión al riesgo.""",
-    "CAPTION_ADV_CURVE": """<b>Fig 7.1:</b> Spreads 2Y-10Y y 10Y-3M. Ambos negativos confirman señal recesiva; la normalización indica re-pricing.""",
-    "CAPTION_REAL_RATES":"""<b>Fig 7.2:</b> Rendimiento real aproximado (TIP yield proxy). Tasas reales positivas comprimen valuaciones de renta variable.""",
-    "CAPTION_AMIHUD":    """<b>Fig 8.1:</b> Ratio de Amihud (rolling 21D). Picos indican deterioro de liquidez; valores altos preceden volatilidad.""",
-    "CAPTION_VOLUME":    """<b>Fig 8.2:</b> Volumen SPY relativo a media 20D. Barras rojas = volumen por encima de media (posibles puntos de inflexión).""",
+    # ── Pies de Figura (Ajustados a la data real) ─────────────────────
+    "CAPTION_MACRO":     """<b>Fig 1.1:</b> La subida del VIX a ~20 rompe la tendencia de complacencia mientras el S&P 500 consolida tras meses de rally.""",
+    "CAPTION_VIX":       """<b>Fig 1.2:</b> Z-Score de VIX: Valores subiendo hacia zona neutra/alta indican encarecimiento de primas de opciones de cobertura.""",
+    "CAPTION_CONE":      """<b>Fig 2.1:</b> RSI en 45.61 (línea morada) confirma salida de sobrecompra. El cono proyecta bandas amplias de riesgo.""",
+    "CAPTION_CURVE":     """<b>Fig 3.1:</b> Estructura de tasas: La parte corta cedió terreno, iniciando la peligrosa fase de desinversión (steepening).""",
+    "CAPTION_RECESSION": """<b>Fig 3.2:</b> ALERTA: Spread 10Y-3M cruzando al alza el nivel de 0.0. Históricamente marca el fin del ciclo tardío.""",
+    "CAPTION_CORR":      """<b>Fig 4.1:</b> La correlación SPY/TLT móvil bordea zona positiva, indicando fallos temporales en la cobertura de renta fija.""",
+    "CAPTION_HEATMAP":   """<b>Fig 4.2:</b> Matriz de 90 días: Fuerte correlación inversa de -0.88 entre SPY y VIX. SPY/TLT casi nula (0.09).""",
+    "CAPTION_DD":        """<b>Fig 5.1:</b> La renta fija (Rojo) sigue experimentando los peores drawdowns de la década comparado al Equity.""",
+    "CAPTION_STRESS":    """<b>Fig 5.2:</b> Impacto en portafolio: Choques de tasas (+50bps) e inflación representan pérdidas que superan los $600k. Portafolio compuesto por SPY: USD 5M, TLT: USD 6M, IEF: USD 3M, SHY: USD 4M""",
+    "CAPTION_GLOBAL":    """<b>Fig 6.1:</b> Dominio Emergente. EEM y FXI se desmarcan al alza impulsados por el dólar débil, superando al S&P 500.""",
+    "CAPTION_CREDIT":    """<b>Fig 6.2:</b> Spread HYG/IEF en 0.82. Nivel de soporte crítico para evaluar el riesgo de default corporativo sistémico.""",
+    "CAPTION_ADV_CURVE": """<b>Fig 7.1:</b> Confirmación cruzada: Spreads claves saliendo de la zona roja (negativa). El re-pricing está en marcha.""",
+    "CAPTION_REAL_RATES":"""<b>Fig 7.2:</b> Proxy de tasas reales (10Y - componente inflacionario) manteniéndose en nivel restrictivo para la economía.""",
+    "CAPTION_AMIHUD":    """<b>Fig 8.1:</b> El ratio de iliquidez de Amihud mide fricciones en la ejecución de bloques. Monitorear spikes.""",
+    "CAPTION_VOLUME":    """<b>Fig 8.2:</b> Volumen de negociación. Barras rojas validan 'sell-offs' institucionales o acumulación en el SPY.""",
 
     # ── Market Monitoring Implications ───────────────────────────────
-    "TAKEAWAYS": """CONDITIONS: Iniciar cortos tácticos en activos de alto beta si el VIX supera 20.
-SUGGEST: Mantenerse en la parte corta de la curva en bonos de 1-3 años (SHY). Evaluar TIPS ante re-aceleración de inflación.
-GLOBAL: Subponderar EEM y FXI hasta confirmación de pivote Fed. EWG ofrece valor relativo vs SPY.
-LIQUIDITY: Monitorear Amihud SPY — un spike >2x su media señala ventana de stress inminente.
-OPPORTUNITIES: Usar la banda superior del Cono Implícito como nivel de Take Profit parcial.
-MONITOR: CPI, NFP y minutas Fed son los catalizadores clave del próximo 30 días.""",
+    "TAKEAWAYS": """CONDITIONS: VIX rozando 20 (actual 19.86) activa alertas de cobertura. El RSI en 45.61 desaconseja estrategias de 'mean-reversion' agresivas a la baja.
+SUGGEST: Posicionar en EEM/Emergentes dada su fortaleza relativa indiscutible (base 148.32) apoyada por el DXY débil.
+RATES ALERTA: La desinversión de la curva 10Y-3M (0.38) obliga a reducir duración y prepararse para volatilidad macro.
+LIQUIDITY: Mantener dry-powder (efectivo). El S&P 500 a corto plazo sufre fricciones (-1.36% en 1M).
+MONITOR: La correlación SPY/TLT de 0.09 significa que para cubrir una recesión inminente, las opciones del VIX son superiores matemáticamente a comprar bonos de largo plazo."""
 }
 
 # ── Próximos Eventos (modificar según calendario económico actual) ────
@@ -116,7 +104,7 @@ PORTFOLIO = {
 
 # ── Escenarios (editar manualmente según visión de mercado) ──────────
 SCENARIOS_DATA = {
-    'headers': ['Dimensión', 'BEAR  25%', 'BASE  50%', 'BULL  25%'],
+    'headers': ['Dimensión', 'BEAR 25%', 'BASE 50%', 'BULL 25%'],
     'rows': [
         ['Catalizador',
          'Inflación reaccelera,\naccidente crediticio',
@@ -136,9 +124,8 @@ SCENARIOS_DATA = {
     ]
 }
 
-# ══════════════════════════════════════════════════════════════════════
+
 # 2. DATA ENGINE
-# ══════════════════════════════════════════════════════════════════════
 print("Descargando Datos de Yahoo Finance...")
 
 TICKERS_CURVE = {'3M': '^IRX', '5Y': '^FVX', '10Y': '^TNX', '30Y': '^TYX'}
@@ -157,7 +144,6 @@ start_date = end_date - timedelta(days=365 * 3)
 
 # Descarga precio de cierre ajustado
 raw = yf.download(ALL_YF, start=start_date, end=end_date, auto_adjust=True, progress=False)
-
 try:
     data = raw['Close'].ffill().dropna(how='all')
 except Exception:
@@ -188,9 +174,8 @@ except Exception as e:
     print(f"FRED no disponible: {e}. Se usarán proxies de Yahoo Finance.")
     HAS_FRED = False
 
-# ══════════════════════════════════════════════════════════════════════
+
 # 3. CÁLCULOS
-# ══════════════════════════════════════════════════════════════════════
 print("Calculando Métricas...")
 
 # ── Cambios periódicos ────────────────────────────────────────────────
@@ -346,9 +331,7 @@ scorecard_rows = [
     ['Global (EEM base 100)',sc_global_color,sc_global_val,  'Performance relativa EM. <95 = risk-off en emergentes.'],
 ]
 
-# ══════════════════════════════════════════════════════════════════════
 # 4. MOTOR GRÁFICO
-# ══════════════════════════════════════════════════════════════════════
 print("Generando Gráficos V2...")
 
 plt.style.use('seaborn-v0_8-whitegrid')
@@ -602,9 +585,8 @@ s_Bullet    = ParagraphStyle('BU', parent=s_Body, leftIndent=20,
 
 story = []
 
-# ══════════════════════════════════════════════════════════════════════
 # PORTADA / HEADER
-# ══════════════════════════════════════════════════════════════════════
+
 story.append(Paragraph("MARKETS REPORT | CROSS-ASSET STRATEGY", styles['Normal']))
 story.append(Paragraph("Market Intelligence Monitor", s_Title))
 story.append(Paragraph(
@@ -614,9 +596,8 @@ story.append(Paragraph(
 ))
 story.append(Spacer(1, 15))
 
-# ══════════════════════════════════════════════════════════════════════
 # SECCIÓN 0: RISK SCORECARD (Semáforo)
-# ══════════════════════════════════════════════════════════════════════
+
 story.append(Paragraph("Risk Intelligence Scorecard", s_Head))
 story.append(Paragraph(
     "Resumen ejecutivo de señales por dimensión analítica. "
@@ -657,9 +638,7 @@ sc_t.setStyle(TableStyle([
 story.append(sc_t)
 story.append(PageBreak())
 
-# ══════════════════════════════════════════════════════════════════════
 # SECCIÓN 1: MACRO OVERVIEW
-# ══════════════════════════════════════════════════════════════════════
 story.append(Paragraph("1. Macro Overview & Regime Analysis", s_Head))
 story.append(Paragraph(ANALYSIS["MACRO_HEADER"], s_Body))
 story.append(Spacer(1, 5))
@@ -692,9 +671,8 @@ story.append(Image(img_vix_z, width=480, height=180))
 story.append(Paragraph(ANALYSIS["CAPTION_VIX"], s_Caption))
 story.append(PageBreak())
 
-# ══════════════════════════════════════════════════════════════════════
+
 # SECCIÓN 2: TACTICAL ALPHA
-# ══════════════════════════════════════════════════════════════════════
 story.append(Paragraph("2. Tactical Alpha Dashboard", s_Head))
 story.append(Paragraph(ANALYSIS["ALPHA_BODY"], s_Body))
 story.append(Spacer(1, 10))
@@ -703,9 +681,8 @@ story.append(Image(img_alpha, width=480, height=350))
 story.append(Paragraph(ANALYSIS["CAPTION_CONE"], s_Caption))
 story.append(PageBreak())
 
-# ══════════════════════════════════════════════════════════════════════
+
 # SECCIÓN 3: RATES STRUCTURE
-# ══════════════════════════════════════════════════════════════════════
 story.append(Paragraph("3. Rates Structure & Recession Watch", s_Head))
 story.append(Paragraph(ANALYSIS["RATES_BODY"], s_Body))
 story.append(Spacer(1, 10))
@@ -717,9 +694,7 @@ story.append(Image(img_recession, width=480, height=250))
 story.append(Paragraph(ANALYSIS["CAPTION_RECESSION"], s_Caption))
 story.append(PageBreak())
 
-# ══════════════════════════════════════════════════════════════════════
-# SECCIÓN 4: RISK & CORRELATION
-# ══════════════════════════════════════════════════════════════════════
+# SECCIÓN 4: RISK & CORRELATION# 
 story.append(Paragraph("4. Risk & Correlation", s_Head))
 story.append(Paragraph(ANALYSIS["RISK_BODY"], s_Body))
 story.append(Spacer(1, 10))
@@ -732,9 +707,7 @@ story.append(Image(img_heatmap, width=480, height=280))
 story.append(Paragraph(ANALYSIS["CAPTION_HEATMAP"], s_Caption))
 story.append(PageBreak())
 
-# ══════════════════════════════════════════════════════════════════════
 # SECCIÓN 5: PORTFOLIO FRAGILITY
-# ══════════════════════════════════════════════════════════════════════
 story.append(Paragraph("5. Portfolio Fragility & Stress Test", s_Head))
 story.append(Paragraph(ANALYSIS["PORTFOLIO_BODY"], s_Body))
 story.append(Spacer(1, 10))
@@ -753,9 +726,7 @@ story.append(Image(img_stress, width=300, height=200))
 story.append(Paragraph(ANALYSIS["CAPTION_STRESS"], s_Caption))
 story.append(PageBreak())
 
-# ══════════════════════════════════════════════════════════════════════
-# SECCIÓN 6: GLOBAL MACRO & CREDIT (NUEVA)
-# ══════════════════════════════════════════════════════════════════════
+# SECCIÓN 6: GLOBAL MACRO & CREDIT 
 story.append(Paragraph("6. Global Macro & Credit Spreads", s_Head))
 story.append(Paragraph(ANALYSIS["GLOBAL_BODY"], s_Body))
 story.append(Spacer(1, 10))
@@ -768,9 +739,8 @@ story.append(Image(img_credit, width=480, height=210))
 story.append(Paragraph(ANALYSIS["CAPTION_CREDIT"], s_Caption))
 story.append(PageBreak())
 
-# ══════════════════════════════════════════════════════════════════════
-# SECCIÓN 7: ADVANCED CURVE ANALYSIS (NUEVA)
-# ══════════════════════════════════════════════════════════════════════
+
+# SECCIÓN 7: ADVANCED CURVE ANALYSIS 
 story.append(Paragraph("7. Advanced Yield Curve Analysis", s_Head))
 story.append(Paragraph(ANALYSIS["ADVANCED_CURVE_BODY"], s_Body))
 story.append(Spacer(1, 10))
@@ -786,9 +756,8 @@ story.append(Image(img_real_rates, width=480, height=210))
 story.append(Paragraph(ANALYSIS["CAPTION_REAL_RATES"], s_Caption))
 story.append(PageBreak())
 
-# ══════════════════════════════════════════════════════════════════════
+
 # SECCIÓN 8: MARKET LIQUIDITY (NUEVA)
-# ══════════════════════════════════════════════════════════════════════
 story.append(Paragraph("8. Market Liquidity Monitor", s_Head))
 story.append(Paragraph(ANALYSIS["LIQUIDITY_BODY"], s_Body))
 story.append(Spacer(1, 10))
@@ -801,9 +770,7 @@ story.append(Image(img_volume, width=480, height=210))
 story.append(Paragraph(ANALYSIS["CAPTION_VOLUME"], s_Caption))
 story.append(PageBreak())
 
-# ══════════════════════════════════════════════════════════════════════
 # SECCIÓN 9: SCENARIO ANALYSIS (NUEVA)
-# ══════════════════════════════════════════════════════════════════════
 story.append(Paragraph("9. Scenario Analysis — Bull / Base / Bear", s_Head))
 story.append(Paragraph(ANALYSIS["SCENARIO_BODY"], s_Body))
 story.append(Spacer(1, 12))
@@ -850,9 +817,7 @@ sc_table.setStyle(TableStyle([
 story.append(sc_table)
 story.append(PageBreak())
 
-# ══════════════════════════════════════════════════════════════════════
 # SECCIÓN 10: EXECUTIVE SUMMARY & EVENTS
-# ══════════════════════════════════════════════════════════════════════
 story.append(Paragraph("10. Executive Summary & Events", s_Head))
 story.append(Paragraph("MARKET MONITORING IMPLICATIONS (Non-Advisory):", styles['Heading3']))
 for line in ANALYSIS['TAKEAWAYS'].split('\n'):
@@ -874,9 +839,7 @@ t_ev.setStyle(TableStyle([
 ]))
 story.append(t_ev)
 
-# ══════════════════════════════════════════════════════════════════════
 # BUILD
-# ══════════════════════════════════════════════════════════════════════
 doc.build(story)
 print("\n✅  REPORTE GENERADO: Market_Intelligence_Monitor_V2.pdf")
 print(f"    Páginas aprox: 10 | Secciones: 10 | Activos monitoreados: {len(ALL_YF)}")
